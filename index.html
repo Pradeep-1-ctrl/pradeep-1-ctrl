@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Model Viewer</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+        }
+
+        /* 🔵 MODERN BLUE HEADER */
+        .topbar {
+            background: linear-gradient(90deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .search-box input {
+            padding: 8px 12px;
+            width: 250px;
+            border-radius: 20px;
+            border: none;
+            outline: none;
+        }
+
+        .container {
+            padding: 20px 30px;
+        }
+
+        select {
+            padding: 8px 12px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            margin: 15px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+
+        .image-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .thumb {
+            width: 95px;
+            height: 95px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            transition: transform 0.2s;
+        }
+
+        .thumb:hover {
+            transform: scale(1.05);
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- 🔵 BLUE HEADER -->
+<div class="topbar">
+    <div class="logo">
+        <img src="logo.png" alt="Company Logo">
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search item code...">
+    </div>
+</div>
+
+
+<div class="container">
+
+<h2>Select Model</h2>
+
+<select id="modelSelect"></select>
+
+<div id="result"></div>
+
+</div>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const apiURL = "https://script.google.com/macros/s/AKfycbyrniSXpbWVJz5tgpkJ1b5WroQ4SzpsgbI4nSsYxP4QxjB32Vb2CCi9I6xlh37eskQ/exec";
+
+    let allData = [];
+    let currentFiltered = [];
+
+    const dropdown = document.getElementById("modelSelect");
+    const container = document.getElementById("result");
+    const searchInput = document.getElementById("searchInput");
+
+    function imageTag(img) {
+        if (!img || img.trim() === "" || img === "NA" || img === "N/A") {
+            return "";
+        }
+        return `<img src="${img}" class="thumb"
+                onerror="this.style.display='none'">`;
+    }
+
+    function renderCards(dataList) {
+
+        container.innerHTML = "";
+
+        if(dataList.length === 0){
+            container.innerHTML = "<p>No Data Found</p>";
+            return;
+        }
+
+        dataList.forEach(item => {
+
+            const card = document.createElement("div");
+            card.className = "card";
+
+            const images = [
+                item["Image 1"] || item["Image1"],
+                item["Image 2"] || item["Image2"],
+                item["Image 3"] || item["Image3"],
+                item["Image 4"] || item["Image4"]
+            ];
+
+            let fruValue =
+                item["FRU"] ||
+                item["FRU No"] ||
+                item["FRU Number"] ||
+                item["ERP Codes"] ||
+                "";
+
+            if (!fruValue || fruValue.trim() === "" || fruValue === "NA" || fruValue === "N/A") {
+                fruValue = "Not Available";
+            }
+
+            card.innerHTML = `
+                <h3>${item["Item code"] || "Not Available"}</h3>
+                <p><b>FRU:</b> ${fruValue}</p>
+                <div class="image-container">
+                    ${images.map(img => imageTag(img)).join("")}
+                </div>
+            `;
+
+            container.appendChild(card);
+        });
+    }
+
+    fetch(apiURL)
+    .then(res => res.json())
+    .then(data => {
+
+        allData = data;
+
+        const modelMap = new Map();
+
+        data.forEach(item => {
+            const model = item["Item template"];
+            if(model){
+                const lower = model.toLowerCase();
+                if(!modelMap.has(lower)){
+                    modelMap.set(lower, model);
+                }
+            }
+        });
+
+        dropdown.innerHTML = "<option value=''>-- Select Model --</option>";
+
+        modelMap.forEach(originalModel => {
+            const opt = document.createElement("option");
+            opt.value = originalModel;
+            opt.textContent = originalModel;
+            dropdown.appendChild(opt);
+        });
+
+    });
+
+    dropdown.addEventListener("change", function() {
+
+        const selectedModel = this.value.toLowerCase();
+
+        if (!selectedModel) {
+            container.innerHTML = "";
+            return;
+        }
+
+        currentFiltered = allData.filter(item =>
+            item["Item template"] &&
+            item["Item template"].toLowerCase() === selectedModel
+        );
+
+        renderCards(currentFiltered);
+    });
+
+    searchInput.addEventListener("input", function() {
+
+        const keyword = this.value.toLowerCase();
+
+        const searched = currentFiltered.filter(item =>
+            item["Item code"] &&
+            item["Item code"].toLowerCase().includes(keyword)
+        );
+
+        renderCards(searched);
+    });
+
+});
+
+</script>
+
+</body>
+</html>
